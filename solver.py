@@ -196,7 +196,6 @@ for (nodo1, nodo2), veces_recorrido in mapa_resultados.items():
     if nodo2 == nodo_terminal:
         limite_paso_salida += veces_recorrido
 mapa_adyacencia_original = copy.deepcopy(mapa_adyacencia)
-pbar = tqdm(total = sum([len(mapa_adyacencia[x]) for x in mapa_adyacencia]))
 mejor_ruta = None
 mejor_mapa_adyacencia = None
 mejor_cantidad_arcos = float('inf') 
@@ -205,11 +204,8 @@ total_arcos = sum(cantidad for sublist in mapa_adyacencia_original.values() for 
 ruta = [nodo_inicial]
 all_avoid = {x:[] for x in list(NODOS)}
 
-
-while sum([len(mapa_adyacencia[x]) for x in mapa_adyacencia]) > 0:
-    ruta = dfs2(True, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_terminal, all_avoid[nodo_inicial], ruta) 
-    print(ruta)
-    pbar.update(1)  
-pbar.close() 
-visualizar_grafo(mapa_adyacencia_copia, mejor_ruta) # type: ignore
+ruta = dfs2(True, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_terminal, ruta) 
+print("La solucion es la siguiente:")
+print(ruta)
+visualizar_grafo(mapa_adyacencia_copia, ruta) # type: ignore
 

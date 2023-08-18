@@ -1,4 +1,5 @@
 import random
+import copy
 class Nodo:
     def __init__(self, id):
         self.id = id
@@ -71,12 +72,10 @@ def construir_mapa_adyacencia(grafo, mapa_resultados):
                 mapa_adyacencia[nodo.id].append([arco.destino.id,cantidad])
     return mapa_adyacencia
     
-def elegirSiguiente(mapa_adyacencia, nodo_inicial, avoid):
+def elegirSiguiente(mapa_adyacencia, nodo_inicial):
     mayor_recorrido = 0
     indice_mayor_recorrido = -1  
     for i, (adyacente, recorrido) in enumerate(mapa_adyacencia[nodo_inicial]):
-        if avoid is not None and adyacente in avoid:
-            continue
         if recorrido > mayor_recorrido:
             mayor_recorrido = recorrido
             indice_mayor_recorrido = i
@@ -98,6 +97,7 @@ def reparar_solucion(mejor_ruta, mejor_mapa_adyacencia, mapa_adyacencia_copia):
     return mejor_ruta, mejor_mapa_adyacencia
 
 def dfs(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_final, avoid, camino=None): 
+    #sum([len(mapa_adyacencia[x]) for x in mapa_adyacencia]) > 0
     assert avoid is None or isinstance(avoid, list), "avoid no es una lista"
 
     if camino is None:
@@ -119,7 +119,7 @@ def dfs(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_f
             indice_nodo_elegido = i 
             adyacente, recorrido = mapa_adyacencia[nodo_inicial][i]
         else:
-            indice_nodo_elegido = elegirSiguiente(mapa_adyacencia, nodo_inicial, avoid) #agregar memoria o aleatoriedad a elegirSiguiente
+            indice_nodo_elegido = elegirSiguiente(mapa_adyacencia, nodo_inicial) #agregar memoria o aleatoriedad a elegirSiguiente
             adyacente, recorrido = mapa_adyacencia[nodo_inicial][indice_nodo_elegido]
         if avoid is not None and indice_nodo_elegido in avoid:
             continue
@@ -132,60 +132,67 @@ def dfs(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_f
         break
     return camino
 
-def dfs2(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_final, avoid, camino=None):
-    assert avoid is None or isinstance(avoid, list), "avoid no es una lista"
-
+def dfs2(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_final, camino=None):
     if camino is None:
         camino = [nodo_inicial]
-        
-    if nodo_inicial == nodo_final and limite_paso_salida == 0:
-        return camino
 
-    if nodo_inicial in avoid or len(mapa_adyacencia[nodo_inicial]) == 0:
+    # Caso base: encontramos una solución
+    if nodo_inicial == nodo_final and limite_paso_salida <= 0:
+        if sum([len(mapa_adyacencia[x]) for x in mapa_adyacencia]) == 0:
+            return camino
+        else:
+            return None
+
+    # Caso base: no hay más nodos para explorar
+    if len(mapa_adyacencia[nodo_inicial]) == 0:
+        print("Se acabaron los nodos, pero no estamos en el nodo final.")
+        print("Pensar si se puede arreglar esta solucion.")# es posible que estemos al lado del nodo final y solo requiera agregar un arcos mas 
+        print(camino)
         return None
 
     indices = list(range(len(mapa_adyacencia[nodo_inicial])))
+    #avoid = all_avoid[nodo_inicial] #intentar hacer el deep copy aca
     if metodo_random:
         random.shuffle(indices)
-
+        
     for i in indices:
-        adyacente, recorrido = mapa_adyacencia[nodo_inicial][i]
-        if adyacente in avoid:
-            continue
+        indice_nodo_elegido = i if metodo_random else elegirSiguiente(mapa_adyacencia, nodo_inicial) # elegir siguiente debe saber que indice evitar, hacer el deep copy antes 
+
+        #if avoid is not None and indice_nodo_elegido in avoid:
+            #continue
+        adyacente, recorrido = mapa_adyacencia[nodo_inicial][indice_nodo_elegido]
+
+        camino.append(adyacente)
+
         if adyacente == nodo_final:
             limite_paso_salida -= 1
-        if recorrido > 0:
-            mapa_adyacencia[nodo_inicial][i][1] -= 1
-            nuevo_camino = camino.copy()
-            nuevo_camino.append(adyacente)
-            result = dfs(metodo_random, limite_paso_salida, mapa_adyacencia.copy(), adyacente, nodo_final, avoid, nuevo_camino)
-            if result:
-                return result
 
-    # Si llegamos a este punto, significa que no encontramos un camino válido desde este nodo, entonces lo añadimos a 'avoid'
-    avoid.append(nodo_inicial)
+        mapa_adyacencia_copia = copy.deepcopy(mapa_adyacencia)
+        recorrido -= 1
+        if recorrido == 0:
+            del mapa_adyacencia_copia[nodo_inicial][indice_nodo_elegido]
+        else:
+            mapa_adyacencia_copia[nodo_inicial][indice_nodo_elegido][1] = recorrido
+
+        #all_avoid_copia = copy.deepcopy(all_avoid)
+        # Llamada recursiva
+        resultado = dfs2(metodo_random, limite_paso_salida, mapa_adyacencia_copia, adyacente, nodo_final, camino)
+
+        # Si encontramos una solución, la retornamos
+        if resultado:
+            return resultado
+
+        # Si no encontramos una solución, hacemos backtrack
+        camino.pop()
+        if adyacente == nodo_final:
+            limite_paso_salida += 1
+        #avoid.append(indice_nodo_elegido) 
+
+    # Si exploramos todas las opciones y no encontramos una solución, retornamos None
     return None
 
-
-
-    #while mapa_adyacencia[nodo_inicial] and contador < max_iteraciones:
-     #   contador += 1       
-      #  if metodo_random:
-       #     adyacente, recorrido = random.choice(mapa_adyacencia[nodo_inicial])            
-        #else:
-            #indice_nodo_elegido = elegirSiguiente(mapa_adyacencia, nodo_inicial)
-            #adyacente, recorrido = mapa_adyacencia[nodo_inicial][indice_nodo_elegido]
-        #if adyacente == nodo_final: 
-            #limite_paso_salida -= 1
-        #camino.append(adyacente)
-        #recorrido -= 1
-        #if recorrido == 0:
-            #del mapa_adyacencia[nodo_inicial][-indice_nodo_elegido] # arreglar esto, generar lista de indices 
-        #ruta_resultante = dfs(metodo_random, limite_paso_salida, mapa_adyacencia, adyacente ,nodo_final, camino)
-        #if ruta_resultante:
-            #return ruta_resultante
-    
-    
+# otra opcion es ordenar indices segun pasadas de manera decreciente, para evitar hacer un elegirSiguiente
+# agregar restricciones de vueltas en u y otras restricciones de trafico.
 
 
 
