@@ -71,68 +71,19 @@ def construir_mapa_adyacencia(grafo, mapa_resultados):
             if cantidad > 0:
                 mapa_adyacencia[nodo.id].append([arco.destino.id,cantidad])
     return mapa_adyacencia
-    
-def elegirSiguiente(mapa_adyacencia, nodo_inicial):
-    mayor_recorrido = 0
-    indice_mayor_recorrido = -1  
-    for i, (adyacente, recorrido) in enumerate(mapa_adyacencia[nodo_inicial]):
-        if recorrido > mayor_recorrido:
-            mayor_recorrido = recorrido
-            indice_mayor_recorrido = i
-    return indice_mayor_recorrido
 
-def reparar_solucion(mejor_ruta, mejor_mapa_adyacencia, mapa_adyacencia_copia):
-    arcos_faltantes = {}
+def es_transicion_valida(nodo_inicial, nodo_adyacente, camino, restricciones):
+    # Verifica la restricción de no regresar al nodo anterior
+    if nodo_adyacente == camino[-2] if len(camino) > 1 else None:
+        return False
 
-    for nodo, adyacentes in mejor_mapa_adyacencia.items():
-        adyacentes_faltantes = [adyacente for adyacente in adyacentes if adyacente[1] == 1]
-        if adyacentes_faltantes:
-            arcos_faltantes[nodo] = adyacentes_faltantes
-    nodos_faltantes = list(arcos_faltantes.keys())
-    #ruta = dfs(False, 1, mapa_adyacencia_copia, nodos_faltantes[0], nodos_faltantes[1])
-    #print(ruta)
+    # Agregar mas restricciones
+
+    return True
 
 
-
-    return mejor_ruta, mejor_mapa_adyacencia
-
-def dfs(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_final, avoid, camino=None): 
-    #sum([len(mapa_adyacencia[x]) for x in mapa_adyacencia]) > 0
-    assert avoid is None or isinstance(avoid, list), "avoid no es una lista"
-
-    if camino is None:
-        camino = [nodo_inicial]
-
-    if (nodo_inicial == nodo_final and limite_paso_salida == 0):
-        return camino
-    
-    if len(mapa_adyacencia[nodo_inicial]) == 0:
-        avoid.append(nodo_inicial)
-        camino.pop()
-        return None
-    indices = list(range(len(mapa_adyacencia[nodo_inicial])))
-    if metodo_random:
-        random.shuffle(indices)
-    
-    for i in indices:
-        if metodo_random:
-            indice_nodo_elegido = i 
-            adyacente, recorrido = mapa_adyacencia[nodo_inicial][i]
-        else:
-            indice_nodo_elegido = elegirSiguiente(mapa_adyacencia, nodo_inicial) #agregar memoria o aleatoriedad a elegirSiguiente
-            adyacente, recorrido = mapa_adyacencia[nodo_inicial][indice_nodo_elegido]
-        if avoid is not None and indice_nodo_elegido in avoid:
-            continue
-        if adyacente == nodo_final:             
-            limite_paso_salida -= 1
-        camino.append(adyacente)
-        recorrido -= 1
-        if recorrido == 0:
-            del mapa_adyacencia[nodo_inicial][-indice_nodo_elegido]
-        break
-    return camino
-
-def dfs2(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_final, camino=None):
+restricciones = {}
+def backtrack(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_final, relaxed_solver, camino=None):
     if camino is None:
         camino = [nodo_inicial]
 
@@ -151,16 +102,19 @@ def dfs2(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_
         return None
 
     indices = list(range(len(mapa_adyacencia[nodo_inicial])))
-    #avoid = all_avoid[nodo_inicial] #intentar hacer el deep copy aca
     if metodo_random:
         random.shuffle(indices)
+    else:  
+        indices = sorted(indices, key=lambda i: mapa_adyacencia[nodo_inicial][i][1], reverse=True)
         
     for i in indices:
-        indice_nodo_elegido = i if metodo_random else elegirSiguiente(mapa_adyacencia, nodo_inicial) # elegir siguiente debe saber que indice evitar, hacer el deep copy antes 
+        indice_nodo_elegido = i 
 
-        #if avoid is not None and indice_nodo_elegido in avoid:
-            #continue
         adyacente, recorrido = mapa_adyacencia[nodo_inicial][indice_nodo_elegido]
+        
+        if (not relaxed_solver):
+            if not es_transicion_valida(nodo_inicial, adyacente, camino, restricciones):
+                continue
 
         camino.append(adyacente)
 
@@ -168,15 +122,15 @@ def dfs2(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_
             limite_paso_salida -= 1
 
         mapa_adyacencia_copia = copy.deepcopy(mapa_adyacencia)
-        recorrido -= 1
+        
+        recorrido -= 1        
         if recorrido == 0:
             del mapa_adyacencia_copia[nodo_inicial][indice_nodo_elegido]
         else:
             mapa_adyacencia_copia[nodo_inicial][indice_nodo_elegido][1] = recorrido
 
-        #all_avoid_copia = copy.deepcopy(all_avoid)
         # Llamada recursiva
-        resultado = dfs2(metodo_random, limite_paso_salida, mapa_adyacencia_copia, adyacente, nodo_final, camino)
+        resultado = backtrack(metodo_random, limite_paso_salida, mapa_adyacencia_copia, adyacente, nodo_final, relaxed_solver, camino)
 
         # Si encontramos una solución, la retornamos
         if resultado:
@@ -186,16 +140,6 @@ def dfs2(metodo_random, limite_paso_salida, mapa_adyacencia, nodo_inicial, nodo_
         camino.pop()
         if adyacente == nodo_final:
             limite_paso_salida += 1
-        #avoid.append(indice_nodo_elegido) 
 
     # Si exploramos todas las opciones y no encontramos una solución, retornamos None
     return None
-
-# otra opcion es ordenar indices segun pasadas de manera decreciente, para evitar hacer un elegirSiguiente
-# agregar restricciones de vueltas en u y otras restricciones de trafico.
-
-
-
-
-
- 

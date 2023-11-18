@@ -2,7 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
-def visualizar_grafo(mapa_adyacencia, camino):
+def visualizar_grafo(mapa_adyacencia, camino, show_grafico, nombre_archivo):
     G = nx.DiGraph()  # Crear un grafo dirigido
     
     # Añadir arcos al grafo
@@ -11,11 +11,11 @@ def visualizar_grafo(mapa_adyacencia, camino):
             G.add_edge(nodo, adyacente[0])
 
     # Calcular la posición de los nodos para visualizar
-    pos = nx.spectral_layout(G)
+    pos = nx.kamada_kawai_layout(G)
     nx.draw(G, pos, with_labels=True)
 
     # Dibujar todos los nodos y arcos
-    nx.draw_networkx_nodes(G, pos, node_color='blue')
+    nx.draw_networkx_nodes(G, pos, node_color='yellow')
     nx.draw_networkx_edges(G, pos, edge_color='gray')
 
     # Calcular los colores para los arcos del camino
@@ -46,4 +46,6 @@ def visualizar_grafo(mapa_adyacencia, camino):
             label_pos = (x + offset, y + offset)
             plt.text(label_pos[0], label_pos[1], label, color='black')
 
-    plt.show()  # Mostrar la visualización
+    plt.savefig(nombre_archivo + '-GraficoMapa.png')
+    if show_grafico:
+        plt.show()  # Mostrar la visualización

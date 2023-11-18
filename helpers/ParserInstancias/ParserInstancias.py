@@ -12,7 +12,7 @@ def leer_archivo(ruta):
     #Conjuntos
     NODOS           = set()
     NODOS_FANTASMA  = set()
-    ARISTAS_REQ     = []  # es una lista porque necesito que los elementos se agreguen en orden
+    ARISTAS_REQ     = set()
     ARISTAS_NOREQ   = set()
     COORDENADAS     = set()
     RESTRICCIONES   = set()
@@ -31,8 +31,13 @@ def leer_archivo(ruta):
         archivo.readline() # leer encabezado de seccion
         for _ in range(int(encabezado['ARISTAS_REQ'])):
             linea = archivo.readline().strip()
-            tipo, nodo1, nodo2, costo_recolectar, costo_recoger = linea.split()            
-            ARISTAS_REQ.append((tipo, int(nodo1), int(nodo2), int(costo_recolectar), int(costo_recoger)))
+            tipo, nodo1, nodo2, costo_recorrer, costo_recolectar = linea.split()            
+            if (tipo == 'uni'):
+                ARISTAS_REQ.add((tipo, int(nodo1), int(nodo2), float(costo_recorrer), float(costo_recolectar)))
+            else: 
+                ARISTAS_REQ.add((tipo, int(nodo1), int(nodo2), float(costo_recorrer), float(costo_recolectar)))
+                ARISTAS_REQ.add((tipo, int(nodo2), int(nodo1), float(costo_recorrer), float(costo_recolectar)))
+
 
         
         # Leer las líneas de aristas no requeridas
