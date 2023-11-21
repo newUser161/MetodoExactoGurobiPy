@@ -23,7 +23,7 @@ class FormatoInstancia(ABC):
 class FormatoA(FormatoInstancia):
     def leer_instancia(self):
         if carga_auto:
-            nombre_archivo = "Formato5x5.txt"
+            nombre_archivo = "grande.txt"
         else:
             nombre_archivo = sys.argv[1]
         ruta_absoluta = os.path.abspath(nombre_archivo)           
@@ -157,7 +157,7 @@ model.addConstrs((x[i, j] + x[k, m] >= 1 for ((i, j), (k, m)) in arcos_req_bidir
 model.addConstrs((s_i[k] + gp.quicksum(x[j,i] for (j, i) in arcos_req if i == k) == gp.quicksum(x[i, j] for i, j in arcos_req if i == k) + t_i[l] for k, l in zip(conjunto_inicio, conjunto_termino)), name="ConservacionDeFlujoPuntas") # type: ignore
 
 # B.3b - Conservacion de flujo
-model.addConstrs((gp.quicksum(x[j, i] for (j, i) in arcos_req if i == k) == gp.quicksum(x[i, j] for (i, j) in arcos_req if i == k) + t_i[k] for k in NODOS if k not in conjunto_inicio), name="ConservacionDeFlujoCentro") # type: ignore
+model.addConstrs((gp.quicksum(x[j, i] for (j, i) in arcos_req if i == k) == gp.quicksum(x[i, j] for i, j in arcos_req if i == k) + (t_i[k] if k in conjunto_termino else 0) for k in NODOS if k not in conjunto_inicio), name="ConservacionDeFlujoCentro") # type: ignore
 
 # B.4 - Conjunto de inicio
 model.addConstr(gp.quicksum(s_i[i] for i in conjunto_inicio) == 1, name="NodoInicial") # type: ignore
@@ -175,7 +175,9 @@ try:
 
     # Imprimir los valores de las variables de decisión
     for v in model.getVars():
-        print('%s %g' % (v.varName, v.x))
+        print('%s %g' % (v.varName, v.x))    
+    
+
 
     # Parsear resultados 
     output = [('%s %g' % (v.varName, v.x)) for v in model.getVars()]
@@ -189,11 +191,15 @@ try:
     # Construir grafo
     grafo = construir_grafo(ARISTAS_REQ)
     mapa_resultados = parsear_resultados_gurobi(resultados_x)
+    largo_ruta_a_ciegas = sum(valor for clave, valor in mapa_resultados.items() if valor == 1)
+    print("El largo de la ruta a ciegas es:", largo_ruta_a_ciegas)
+    print("El tiempo del modelo fue:", tiempo_modelo_ns, "nanosegundos")
     mapa_adyacencia = construir_mapa_adyacencia(grafo, mapa_resultados)
     mapa_adyacencia_copia = mapa_adyacencia.copy()
 
 
     # Backtracking - Preparacion
+    print("Preparando backtracking")
     limite_paso_salida = 0 # Cantidad de veces que se puede pasar por el nodo de salida
     for (nodo1, nodo2), veces_recorrido in mapa_resultados.items():
         if nodo2 == nodo_terminal:
